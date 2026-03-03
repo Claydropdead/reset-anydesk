@@ -1,0 +1,32 @@
+@echo off
+
+REM Set source and destination folders for the Roaming AnyDesk folder
+set "roamingSource=%USERPROFILE%\AppData\Roaming\AnyDesk"
+set "roamingDestination=%USERPROFILE%\AppData\Roaming\AnyDesk\old"
+
+REM Set source and destination folders for the ProgramData AnyDesk folder
+set "programDataSource=C:\ProgramData\AnyDesk"
+set "programDataDestination=C:\ProgramData\AnyDesk\old"
+
+REM Check if the Roaming destination folder exists, if not, create it
+if not exist "%roamingDestination%" (
+    mkdir "%roamingDestination%"
+)
+
+REM Move specified files in Roaming
+@REM move "%roamingSource%\user.conf" "%roamingDestination%"
+move "%roamingSource%\service.conf" "%roamingDestination%"
+move "%roamingSource%\system.conf" "%roamingDestination%"
+
+REM Check if the ProgramData destination folder exists, if not, create it
+if not exist "%programDataDestination%" (
+    mkdir "%programDataDestination%"
+)
+
+REM Move specified files in ProgramData
+@REM move "%programDataSource%\user.conf" "%programDataDestination%"
+move "%programDataSource%\service.conf" "%programDataDestination%"
+move "%programDataSource%\system.conf" "%programDataDestination%"
+
+echo Files moved successfully from both locations!
+pause
