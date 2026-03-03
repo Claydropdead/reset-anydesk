@@ -1,49 +1,57 @@
-# Check for Administrator privileges
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Error "Please run PowerShell as Administrator to use this script."
-    return
+function Show-Banner {
+    Clear-Host
+    Write-Host @"
+    #################################################
+    #                                               #
+    #     ██████╗██╗      █████╗ ██╗   ██╗          #
+    #    ██╔════╝██║     ██╔══██╗╚██╗ ██╔╝          #
+    #    ██║     ██║     ███████║ ╚████╔╝           #
+    #    ██║     ██║     ██╔══██║  ╚██╔╝            #
+    #    ╚██████╗███████╗██║  ██║   ██║             #
+    #     ╚═════╝╚══════╝╚═╝  ╚═╝   ╚═╝             #
+    #                                               #
+    #             ANYDESK ID RESETTER               #
+    #################################################
+"@ -ForegroundColor Cyan
 }
 
-# 1. Stop AnyDesk to unlock files
-Write-Host "Stopping AnyDesk..." -ForegroundColor Yellow
-Stop-Process -Name "AnyDesk" -Force -ErrorAction SilentlyContinue
-Stop-Service -Name "AnyDesk" -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+function Reset-AnyDesk {
+    Write-Host "`n[!] Stopping AnyDesk services..." -ForegroundColor Yellow
+    Stop-Process -Name "AnyDesk" -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name "AnyDesk" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
 
-# 2. Define source and destination folders
-$roamingSource = "$env:APPDATA\AnyDesk"
-$roamingDestination = "$env:APPDATA\AnyDesk\old"
+    $paths = @(
+        @{src="$env:APPDATA\AnyDesk"; dest="$env:APPDATA\AnyDesk\old"},
+        @{src="C:\ProgramData\AnyDesk"; dest="C:\ProgramData\AnyDesk\old"}
+    )
 
-$programDataSource = "C:\ProgramData\AnyDesk"
-$programDataDestination = "C:\ProgramData\AnyDesk\old"
-
-# 3. Create destination folders if they don't exist
-if (!(Test-Path $roamingDestination)) {
-    New-Item -ItemType Directory -Path $roamingDestination -Force | Out-Null
-}
-if (!(Test-Path $programDataDestination)) {
-    New-Item -ItemType Directory -Path $programDataDestination -Force | Out-Null
-}
-
-# 4. Define the files to be moved
-$filesToMove = @("service.conf", "system.conf")
-
-# 5. Move files from Roaming
-foreach ($file in $filesToMove) {
-    $filePath = Join-Path $roamingSource $file
-    if (Test-Path $filePath) {
-        Move-Item -Path $filePath -Destination $roamingDestination -Force
-        Write-Host "Moved $file from Roaming AppData" -ForegroundColor Green
+    foreach ($path in $paths) {
+        if (Test-Path $path.src) {
+            if (!(Test-Path $path.dest)) { New-Item -ItemType Directory -Path $path.dest -Force | Out-Null }
+            
+            Get-ChildItem -Path $path.src -Include "service.conf", "system.conf" -File | ForEach-Object {
+                Move-Item -Path $_.FullName -Destination $path.dest -Force
+                Write-Host "[+] Moved $($_.Name) to backup folder." -ForegroundColor Green
+            }
+        }
     }
+    Write-Host "`n[SUCCESS] AnyDesk ID reset complete!" -ForegroundColor Cyan
+    Write-Host "Press any key to return to menu..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-# 6. Move files from ProgramData
-foreach ($file in $filesToMove) {
-    $filePath = Join-Path $programDataSource $file
-    if (Test-Path $filePath) {
-        Move-Item -Path $filePath -Destination $programDataDestination -Force
-        Write-Host "Moved $file from ProgramData" -ForegroundColor Green
+# Main Loop
+do {
+    Show-Banner
+    Write-Host " [01] Reset AnyDesk ID" -ForegroundColor White
+    Write-Host " [00] Exit" -ForegroundColor Red
+    Write-Host ""
+    $choice = Read-Host "Select an option"
+
+    switch ($choice) {
+        "01" { Reset-AnyDesk }
+        "00" { exit }
+        default { Write-Host "Invalid option, try again." -ForegroundColor Red; Start-Sleep -Seconds 1 }
     }
-}
-
-Write-Host "`nFiles moved successfully! AnyDesk will generate a new ID on next launch." -ForegroundColor Cyan
+} while ($true)
